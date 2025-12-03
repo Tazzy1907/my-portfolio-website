@@ -4,9 +4,40 @@
 
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 
+/* Ensure full coverage on iOS devices */
+html {
+  background-color: #1E1E1E;
+  height: -webkit-fill-available;
+}
+
 body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: 'JetBrains Mono', monospace;
+  background-color: #1E1E1E;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
+  /* Prevent iOS bounce/overscroll */
+  overscroll-behavior: none;
+  /* Safe area padding for notch/home indicator */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Prevent text size adjustment on orientation change */
+* {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Smoother touch scrolling */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Disable hover effects on touch devices for better performance */
+@media (hover: none) {
+  .hover\:scale-105:hover {
+    transform: none;
+  }
 }

@@ -52,85 +52,6 @@ const CARDS_DATA = [
   }
 ];
 
-// Helper function to wrap text on canvas
-function wrapText(ctx, text, maxWidth) {
-  const words = text.split(' ');
-  const lines = [];
-  let currentLine = '';
-
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const metrics = ctx.measureText(testLine);
-    
-    if (metrics.width > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  }
-  
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-  
-  return lines;
-}
-
-// Helper function to create card texture (outside component to avoid recreation)
-function createCardTexture(data) {
-  const width = 512;
-  const height = 800;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-
-  // Clear Background
-  ctx.clearRect(0, 0, width, height);
-
-  // Glass border
-  const r = 40;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.roundRect(5, 5, width - 10, height - 10, r);
-  ctx.stroke();
-
-  // Subtle fill
-  ctx.fillStyle = "rgba(40, 40, 40, 0.8)";
-  ctx.beginPath();
-  ctx.roundRect(5, 5, width - 10, height - 10, r);
-  ctx.fill();
-
-  // Text Content
-  ctx.textAlign = "center";
-  ctx.shadowColor = "rgba(0,0,0,0.8)";
-  ctx.shadowBlur = 20;
-  
-  // Title - with text wrapping
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 48px 'JetBrains Mono', monospace";
-  
-  const maxTitleWidth = width - 60; // Padding on sides
-  const titleLines = wrapText(ctx, data.title, maxTitleWidth);
-  const lineHeight = 58;
-  const startY = 120;
-  
-  titleLines.forEach((line, index) => {
-    ctx.fillText(line, width / 2, startY + (index * lineHeight));
-  });
-
-  // Date
-  ctx.fillStyle = data.color;
-  ctx.font = "500 28px 'JetBrains Mono', monospace";
-  ctx.fillText(data.date, width / 2, 680);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  return texture;
-}
-
 // Helper function to create fallback 3D model (used while GLB loads)
 function createFallbackModel(color) {
   const geometry = new THREE.TorusKnotGeometry(0.35, 0.12, 100, 16);
@@ -176,18 +97,20 @@ export default function Experience() {
     if (!container) return;
 
     const three = threeRef.current;
+    const isMobile = window.innerWidth < 1024; // lg breakpoint
 
     // Scene setup
     const scene = new THREE.Scene();
     three.scene = scene;
 
     const camera = new THREE.PerspectiveCamera(
-      45, 
+      45,
       window.innerWidth / window.innerHeight, 
       0.1, 
       1000
     );
     camera.position.z = 12;
+    camera.position.y = isMobile ? -2.2 : 0;  // Camera lower on mobile = logos appear higher
     three.camera = camera;
 
     const renderer = new THREE.WebGLRenderer({ 
@@ -211,22 +134,22 @@ export default function Experience() {
     backLight.position.set(-5, -5, -5);
     scene.add(backLight);
 
-    // Create cards
-    const globalXOffset = -2.5;
+    // Create cards - center on mobile, offset left on desktop
+    const globalXOffset = isMobile ? 0 : -2.5;
     const cardGroups = [];
 
     CARDS_DATA.forEach((data, i) => {
       const group = new THREE.Group();
       
-      // Card mesh
-      const texture = createCardTexture(data);
+      // Card mesh (hidden - kept for structure/animation compatibility)
       const cardGeometry = new THREE.PlaneGeometry(3, 3 * (800 / 512));
       const cardMaterial = new THREE.MeshBasicMaterial({ 
-        map: texture, 
         transparent: true,
+        opacity: 0,
         side: THREE.DoubleSide
       });
       const cardMesh = new THREE.Mesh(cardGeometry, cardMaterial);
+      cardMesh.visible = false;  // Cards are hidden, only logos shown
       group.add(cardMesh);
 
       // Create a container for the 3D logo
@@ -298,6 +221,7 @@ export default function Experience() {
 
     // Animation loop
     let lastActiveIndex = 0;
+    let currentIsMobile = isMobile;
     
     const animate = () => {
       three.animationFrame = requestAnimationFrame(animate);
@@ -310,7 +234,7 @@ export default function Experience() {
 
       let maxZ = -Infinity;
       let newActiveIndex = 0;
-
+      
       // First pass: position cards and determine active card
       cardGroups.forEach((item, index) => {
         const angle = item.baseAngle + three.rotationAngle;
@@ -324,33 +248,106 @@ export default function Experience() {
         const cardEntranceSpin = (1 - cardEasedProgress) * Math.PI * 1.5;
         const cardEntranceScale = 0.2 + (cardEasedProgress * 0.8);
         
-        // Position cards in a circular carousel on the left side
-        item.group.position.x = item.globalXOffset + Math.cos(angle) * 3.5;
-        item.group.position.z = Math.sin(angle) * 3;
-        item.group.position.y = cardEntranceY;
+        if (currentIsMobile) {
+          // MOBILE: Show only 3D logos (no cards), sliding in from left/right
+          // Normalize angle to get position relative to front (-PI to PI)
+          let normalizedAngle = angle % (Math.PI * 2);
+          if (normalizedAngle > Math.PI) normalizedAngle -= Math.PI * 2;
+          if (normalizedAngle < -Math.PI) normalizedAngle += Math.PI * 2;
+          
+          // Position logos horizontally based on their angle from front
+          const slideDistance = 8; // How far off-screen logos go
+          item.group.position.x = normalizedAngle * slideDistance / Math.PI;
+          item.group.position.z = Math.abs(normalizedAngle) < 0.5 ? 0 : -2;
+          item.group.position.y = cardEntranceY;
+          
+          // Hide the card mesh on mobile - only show the 3D logo
+          item.cardMesh.visible = false;
+          
+          // Scale the group for entrance animation
+          const distanceFromCenter = Math.abs(normalizedAngle) / Math.PI; // 0 to 1
+          const mobileScale = 0.8 * (1 - distanceFromCenter * 0.3);
+          const scale = cardEntranceScale * mobileScale;
+          item.group.scale.set(scale, scale, scale);
+          
+          // Determine active card (closest to center angle)
+          if (index === 0) maxZ = Math.abs(normalizedAngle);
+          if (Math.abs(normalizedAngle) <= maxZ) {
+            maxZ = Math.abs(normalizedAngle);
+            newActiveIndex = index;
+          }
+          
+          // Model (3D logo) scale and opacity based on distance from center
+          const logoOpacity = Math.max(0, 1 - distanceFromCenter * 1.5);
+          const modelScale = 1.5 + ((1 - distanceFromCenter) * 0.5); // Larger logos on mobile
+          item.model.scale.setScalar(modelScale * cardEasedProgress);
+          
+          // Center the logo (remove the offset that was for card positioning)
+          item.model.position.set(0, 0, 0.5);
+          
+          // Fade out non-active logos
+          if (item.loadedModel) {
+            item.loadedModel.traverse((child) => {
+              if (child.isMesh && child.material) {
+                child.material.transparent = true;
+                child.material.opacity = logoOpacity * cardEasedProgress;
+              }
+            });
+          }
+          if (item.fallbackModel && item.fallbackModel.material) {
+            item.fallbackModel.material.opacity = logoOpacity * cardEasedProgress;
+          }
+        } else {
+          // DESKTOP: Circular carousel layout with logos only (no cards)
+          const carouselRadiusX = 3.5;
+          const carouselRadiusZ = 3;
+          
+          // Position in a circular carousel
+          item.group.position.x = item.globalXOffset + Math.cos(angle) * carouselRadiusX;
+          item.group.position.z = Math.sin(angle) * carouselRadiusZ;
+          item.group.position.y = cardEntranceY;
+          
+          // Hide the card mesh - only show 3D logos
+          item.cardMesh.visible = false;
+          
+          // Determine active card (frontmost)
+          if (item.group.position.z > maxZ) {
+            maxZ = item.group.position.z;
+            newActiveIndex = index;
+          }
+
+          const z = item.group.position.z;
+          const baseScale = 1 + (z * 0.05);
+          const scale = baseScale * cardEntranceScale;
+          item.group.scale.set(scale, scale, scale);
+          
+          // Opacity fade for depth effect
+          const normalizedZ = (z + carouselRadiusZ) / (carouselRadiusZ * 2);
+          const logoOpacity = Math.max(0.15, Math.pow(normalizedZ, 2));
+          
+          // Scale up logos since we're not showing cards
+          const modelScale = 1.5 + (normalizedZ * 0.5);
+          item.model.scale.setScalar(modelScale);
+          
+          // Center the logo
+          item.model.position.set(0, 0, 0.5);
+          
+          // Apply opacity to loaded models
+          if (item.loadedModel) {
+            item.loadedModel.traverse((child) => {
+              if (child.isMesh && child.material) {
+                child.material.transparent = true;
+                child.material.opacity = logoOpacity * cardEasedProgress;
+              }
+            });
+          }
+          if (item.fallbackModel && item.fallbackModel.material) {
+            item.fallbackModel.material.opacity = logoOpacity * cardEasedProgress;
+          }
+        }
         
         // Apply entrance rotation to the card mesh
         item.cardMesh.rotation.y = cardEntranceSpin;
-        
-        // Determine active card (frontmost)
-        if (item.group.position.z > maxZ) {
-          maxZ = item.group.position.z;
-          newActiveIndex = index;
-        }
-
-        const z = item.group.position.z;
-        const baseScale = 1 + (z * 0.05);
-        const scale = baseScale * cardEntranceScale;
-        item.group.scale.set(scale, scale, scale);
-        
-        // Opacity fade for depth effect (also affected by entrance)
-        const normalizedZ = (z + 3) / 6; // 0 to 1
-        const baseOpacity = Math.max(0.15, Math.pow(normalizedZ, 2));
-        item.cardMesh.material.opacity = baseOpacity * cardEasedProgress;
-        
-        // Scale down background models slightly for depth effect
-        const modelScale = 0.7 + (normalizedZ * 0.3);
-        item.model.scale.setScalar(modelScale);
       });
 
       // Second pass: spin background cards (now that we know which is active)
@@ -424,7 +421,14 @@ export default function Experience() {
     };
 
     const handleTouchStart = (e) => {
-      if (e.touches[0].clientX < window.innerWidth * 0.6) {
+      // On mobile, allow dragging from anywhere in the carousel area (top 42%)
+      const touchY = e.touches[0].clientY;
+      const isMobileView = window.innerWidth < 1024;
+      const isInCarouselArea = isMobileView 
+        ? touchY < window.innerHeight * 0.42  // Top 42% on mobile (carousel zone)
+        : e.touches[0].clientX < window.innerWidth * 0.6;  // Left side on desktop
+      
+      if (isInCarouselArea) {
         three.isDragging = true;
         three.startX = e.touches[0].clientX;
         three.startRotation = three.targetRotationAngle;
@@ -443,9 +447,18 @@ export default function Experience() {
     };
 
     const handleResize = () => {
+      const newIsMobile = window.innerWidth < 1024;
+      currentIsMobile = newIsMobile;  // Update for animation loop
       camera.aspect = window.innerWidth / window.innerHeight;
+      camera.position.y = newIsMobile ? -2.2 : 0;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+      
+      // Update card positions on resize
+      const newGlobalXOffset = newIsMobile ? 0 : -2.5;
+      cardGroups.forEach(item => {
+        item.globalXOffset = newGlobalXOffset;
+      });
     };
 
     // Add event listeners
@@ -490,8 +503,8 @@ export default function Experience() {
   const activeData = CARDS_DATA[activeIndex];
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden font-mono">
-      {/* Three.js Canvas Container */}
+    <div className="relative min-h-screen min-h-[100dvh] w-full overflow-hidden font-mono">
+      {/* Three.js Canvas Container - visible on all screen sizes */}
       <div 
         ref={containerRef} 
         className="absolute inset-0 z-[1]"
@@ -511,7 +524,7 @@ export default function Experience() {
 
         {/* Page Title (center) - positioned relative to viewport, hidden on very small screens */}
         <h1 
-          className="hidden sm:block fixed top-4 sm:top-6 left-0 right-0 text-center text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight animate-slide-up pointer-events-none"
+          className="hidden sm:block fixed top-4 sm:top-6 left-0 right-0 text-center text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight animate-slide-up pointer-events-none px-36 md:px-44 lg:px-52"
           style={{ opacity: 0, animationDelay: '0.15s' }}
         >
           Experience<span className="text-[#A855F7]">.</span>
@@ -521,7 +534,7 @@ export default function Experience() {
         <div className="flex items-center gap-2 sm:gap-4">
           <Link 
             to="/" 
-            className="hidden sm:block text-[#E8B4A0] hover:text-white transition-colors text-sm animate-fade-in"
+            className="hidden lg:block text-[#E8B4A0] hover:text-white transition-colors text-sm animate-fade-in"
             style={{ opacity: 0, animationDelay: '0.2s' }}
           >
             ← Back to Home
@@ -545,49 +558,49 @@ export default function Experience() {
         </h1>
       </div>
 
-      {/* UI Layer */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 h-screen pointer-events-none">
+      {/* UI Layer - Responsive layout */}
+      <div className="relative z-10 flex flex-col lg:grid lg:grid-cols-2 min-h-screen min-h-[100dvh] pointer-events-none">
         
-        {/* Left Side: Carousel Zone - transparent to allow canvas interaction */}
-        <div className="hidden lg:block" />
+        {/* Left Side / Top on Mobile: Carousel Zone - transparent to show Three.js */}
+        <div className="flex-shrink-0 h-[42vh] lg:h-auto lg:flex-1" />
 
-        {/* Right Side: Information Panel - Frosted glass effect */}
-        <div className="flex flex-col justify-between p-4 sm:p-6 md:p-8 lg:p-12 pt-28 sm:pt-24 bg-gradient-to-l from-[#1E1E1E]/95 via-[#1E1E1E]/70 to-transparent backdrop-blur-sm pointer-events-auto overflow-y-auto">
+        {/* Right Side / Bottom on Mobile: Information Panel */}
+        <div className="flex-1 lg:flex-none flex flex-col justify-between p-4 sm:p-6 md:p-8 lg:p-12 pt-2 lg:pt-24 bg-gradient-to-t lg:bg-gradient-to-l from-[#1E1E1E] via-[#1E1E1E] to-[#1E1E1E]/70 lg:from-[#1E1E1E]/95 lg:via-[#1E1E1E]/70 lg:to-transparent backdrop-blur-sm pointer-events-auto overflow-y-auto">
 
           {/* Main Content */}
           <div 
-            className="flex-grow flex flex-col justify-center items-start max-w-lg mt-4 sm:mt-8 lg:mt-0 animate-slide-up"
+            className="flex-grow flex flex-col justify-start lg:justify-center items-center lg:items-start max-w-lg mx-auto lg:mx-0 animate-slide-up"
             style={{ opacity: 0, animationDelay: '0.35s' }}
           >
-            <div className="mb-2 sm:mb-3">
-              <span className="text-[#E8B4A0]/60 uppercase tracking-widest text-xs font-semibold">
+            <div className="mb-1 sm:mb-3">
+              <span className="text-[#E8B4A0]/60 uppercase tracking-widest text-[10px] sm:text-xs font-semibold">
                 Selected Role
               </span>
             </div>
             
             <h2 
-              className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight transition-all duration-300 ${
+              className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-2 sm:mb-4 leading-tight transition-all duration-300 text-center lg:text-left ${
                 isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
               }`}
             >
               {activeData.role}
             </h2>
 
-            <div className="mb-3 sm:mb-4 flex items-center flex-wrap gap-x-2 gap-y-1">
+            <div className="mb-2 sm:mb-4 flex items-center flex-wrap justify-center lg:justify-start gap-x-2 gap-y-1">
               <span 
-                className="text-base sm:text-lg font-semibold transition-all duration-300"
+                className="text-sm sm:text-base lg:text-lg font-semibold transition-all duration-300"
                 style={{ color: activeData.color }}
               >
                 {activeData.title}
               </span>
               <span className="text-white/50">•</span>
-              <span className="text-white/60 text-xs sm:text-sm">{activeData.date}</span>
+              <span className="text-white/60 text-[10px] sm:text-xs lg:text-sm">{activeData.date}</span>
               {activeData.url && (
                 <a 
                   href={activeData.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-1 text-white/50 hover:text-white transition-colors"
+                  className="ml-1 text-white/50 hover:text-white transition-colors p-1 min-w-[44px] min-h-[44px] flex items-center justify-center -m-1"
                   title={`Visit ${activeData.title}`}
                 >
                   <ExternalLink size={16} />
@@ -596,12 +609,12 @@ export default function Experience() {
             </div>
             
             <div 
-              className="h-1 w-16 sm:w-20 rounded-full mb-4 sm:mb-6 transition-all duration-500"
+              className="h-1 w-12 sm:w-16 lg:w-20 rounded-full mb-3 sm:mb-6 transition-all duration-500 mx-auto lg:mx-0"
               style={{ backgroundColor: activeData.color }}
             />
 
             <p 
-              className={`text-sm sm:text-base lg:text-lg text-white/80 leading-relaxed transition-all duration-300 whitespace-pre-line ${
+              className={`text-xs sm:text-sm lg:text-base xl:text-lg text-white/80 leading-relaxed transition-all duration-300 whitespace-pre-line text-center lg:text-left ${
                 isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
               }`}
             >
@@ -609,22 +622,23 @@ export default function Experience() {
             </p>
           </div>
 
-          {/* Footer Controls */}
-          <footer className="flex justify-start items-center gap-4 sm:gap-6 mt-6 sm:mt-0 pb-4 sm:pb-0">
+          {/* Footer Controls - Centered on mobile, left-aligned on desktop */}
+          <footer className="flex justify-center lg:justify-start items-center gap-4 sm:gap-6 mt-4 lg:mt-0 pb-4 lg:pb-0 animate-slide-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
             <button 
               onClick={handlePrev}
-              className="rounded-full p-3 sm:p-4 bg-white/10 text-white hover:bg-white/20 transition-all group border border-white/20"
+              className="rounded-full p-3 sm:p-4 bg-white/10 text-white hover:bg-white/20 active:bg-white/30 transition-all group border border-white/20 min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-1 transition-transform" />
+              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 group-active:-translate-x-1 transition-transform" />
             </button>
-            <div className="text-white/40 text-xs font-medium tracking-widest uppercase">
-              Drag or Click
+            <div className="text-white/40 text-[10px] sm:text-xs font-medium tracking-widest uppercase">
+              <span className="hidden lg:inline">Drag or Click</span>
+              <span className="lg:hidden">Swipe or Tap</span>
             </div>
             <button 
               onClick={handleNext}
-              className="rounded-full p-3 sm:p-4 bg-white/10 text-white hover:bg-white/20 transition-all group border border-white/20"
+              className="rounded-full p-3 sm:p-4 bg-white/10 text-white hover:bg-white/20 active:bg-white/30 transition-all group border border-white/20 min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
-              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 group-active:translate-x-1 transition-transform" />
             </button>
           </footer>
         </div>
