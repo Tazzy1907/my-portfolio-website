@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { Terminal, FileText, Linkedin, Github, Mail } from 'lucide-react';
 import NavButton from '../components/NavButton';
 
@@ -114,37 +113,37 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden font-mono text-white">
+    <div className="relative min-h-screen min-h-[100dvh] w-full overflow-hidden font-mono text-white">
       {/* MAIN CONTENT LAYER */}
-      <div className="relative z-10 flex min-h-screen flex-col items-center px-6 py-6 md:px-12 lg:px-24">
+      <div className="relative z-10 flex min-h-screen min-h-[100dvh] flex-col items-center px-4 sm:px-6 py-4 sm:py-6 md:px-12 lg:px-24">
         
         {/* HEADER SECTION */}
-        <header className="mt-4 flex flex-col items-center text-center">
-          <h1 className="text-5xl font-bold tracking-tight text-white md:text-7xl font-mono min-h-[1.2em]">
+        <header className="mt-2 sm:mt-4 flex flex-col items-center text-center">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white md:text-7xl font-mono min-h-[1.2em]">
             {renderTitle()}
             <span className="typing-cursor">|</span>
           </h1>
           
           {/* NAVIGATION BUTTONS - appear after title */}
-          <nav className={`mt-6 flex flex-wrap justify-center gap-4 transition-all duration-500 ${titleComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <nav className={`mt-4 sm:mt-6 flex flex-wrap justify-center gap-3 sm:gap-4 transition-all duration-500 ${titleComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <NavButton icon={Terminal} label="Projects" to="/projects" color="teal" size="large" />
             <NavButton icon={FileText} label="Experience" to="/experience" color="purple" size="large" />
           </nav>
         </header>
 
         {/* HERO CONTENT - Split Layout */}
-        <main className="mt-10 grid w-full max-w-6xl grid-cols-1 items-start gap-6 lg:grid-cols-2 lg:gap-10">
+        <main className="mt-6 sm:mt-10 grid w-full max-w-6xl grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-2 lg:gap-10 pb-6">
           
           {/* LEFT COLUMN: Bio & Contact */}
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4 sm:gap-5 order-2 lg:order-1">
             <div className="flex flex-col gap-3">
-              <p className={`text-xl font-medium leading-relaxed text-white md:text-2xl lg:text-3xl font-mono min-h-[3.5em] transition-opacity duration-300 ${titleComplete ? 'opacity-100' : 'opacity-0'}`}>
+              <p className={`text-lg sm:text-xl font-medium leading-relaxed text-white md:text-2xl lg:text-3xl font-mono min-h-[2.5em] sm:min-h-[3.5em] transition-opacity duration-300 ${titleComplete ? 'opacity-100' : 'opacity-0'}`}>
                 {renderBio()}
               </p>
 
               {/* About Me Section - fades in after bio */}
               <div className={`transition-all duration-700 ${showContact ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                <p className="text-lg text-white/70 leading-relaxed font-mono">
+                <p className="text-base sm:text-lg text-white/70 leading-relaxed font-mono">
                   I'm passionate about utilising agentic systems to solve and optimise real-world problems. 
                   I'm currently finishing my final year of university, exploring the intersection of artificial intelligence and recommender systems.
                   <br /><br />
@@ -156,7 +155,7 @@ export default function Home() {
             {/* Contact Section - fades in after bio */}
             <div className={`flex flex-col gap-3 transition-all duration-700 ${showContact ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '100ms' }}>
               <h3 className="text-base font-bold text-white font-mono">Get in touch:</h3>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <ContactLink 
                   icon={Linkedin} 
                   label="Tanaz Siriwardena" 
@@ -185,15 +184,16 @@ export default function Home() {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Video/Illustration */}
-          <div className={`relative w-full aspect-[4/3] overflow-hidden rounded-2xl transition-all duration-700 bg-[#2a2a2a] ${titleComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          {/* RIGHT COLUMN: Video/Illustration - shows first on mobile */}
+          <div className={`relative w-full aspect-[4/3] overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-700 bg-[#2a2a2a] order-1 lg:order-2 ${titleComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <video 
               src="/home_video.mp4"
               autoPlay
               loop
               muted
               playsInline
-              className="absolute inset-0 h-full w-full object-cover rounded-2xl"
+              webkitplaysinline="true"
+              className="absolute inset-0 h-full w-full object-cover rounded-xl sm:rounded-2xl"
             >
               Your browser does not support the video tag.
             </video>
@@ -226,15 +226,15 @@ const ContactLink = ({ icon: Icon, label, href, iconBg, delay, show }) => (
     href={href}
     target="_blank"
     rel="noopener noreferrer"
-    className="flex items-center gap-3 text-base font-medium text-white transition-all hover:text-[#E8B4A0] font-mono"
+    className="flex items-center gap-3 text-base font-medium text-white transition-all hover:text-[#E8B4A0] active:text-[#E8B4A0] font-mono py-2 -my-1 min-h-[44px]"
     style={{
       opacity: show ? 1 : 0,
       transform: show ? 'translateX(0)' : 'translateX(-20px)',
       transition: `all 0.4s ease ${delay}ms`
     }}
   >
-    <div className={`flex h-7 w-7 items-center justify-center rounded ${iconBg}`}>
-      <Icon size={16} className="text-white" />
+    <div className={`flex h-8 w-8 sm:h-7 sm:w-7 items-center justify-center rounded ${iconBg}`}>
+      <Icon size={18} className="text-white sm:w-4 sm:h-4" />
     </div>
     {label}
   </a>

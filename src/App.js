@@ -6,7 +6,7 @@ import ScrollingBackground from './components/ScrollingBackground';
 
 function App() {
   return (
-    <div className="min-h-screen bg-[#1E1E1E]">
+    <div className="min-h-screen min-h-[100dvh] bg-[#1E1E1E]">
       <Router>
         {/* Persistent scrolling background - renders once, stays across all pages */}
         <ScrollingBackground />

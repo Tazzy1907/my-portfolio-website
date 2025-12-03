@@ -39,7 +39,7 @@ const PROJECTS_DATA = [
     emoji: "🍔",
     description: "Mobile application to replicate and optimise the ordering system for Loungers, a restaurant chain in the UK. Though unfinished, this project was a first dive into the world of cross-platform mobile development.",
     tags: ["React Native", "JavaScript", "Full-Stack"],
-    // github: "https://github.com/yourusername/financialflow",
+    github: null,  // No public repository available
     color: "#8B5CF6"
   },
   {
@@ -79,7 +79,7 @@ export default function Projects() {
 
         {/* Page Title (center) - positioned relative to viewport, hidden on very small screens */}
         <h1 
-          className="hidden sm:block fixed top-4 sm:top-6 left-0 right-0 text-center text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight animate-slide-up pointer-events-none"
+          className="hidden sm:block fixed top-4 sm:top-6 left-0 right-0 text-center text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight animate-slide-up pointer-events-none px-36 md:px-44 lg:px-52"
           style={{ opacity: 0, animationDelay: '0.15s' }}
         >
           Projects<span className="text-[#2DD4BF]">.</span>
@@ -89,7 +89,7 @@ export default function Projects() {
         <div className="flex items-center gap-2 sm:gap-4">
           <Link 
             to="/" 
-            className="hidden sm:block text-[#E8B4A0] hover:text-white transition-colors text-sm animate-fade-in"
+            className="hidden lg:block text-[#E8B4A0] hover:text-white transition-colors text-sm animate-fade-in"
             style={{ opacity: 0, animationDelay: '0.2s' }}
           >
             ← Back to Home
@@ -130,9 +130,15 @@ const ProjectCard = ({ project, index }) => {
   const [transform, setTransform] = useState('perspective(1000px) rotateX(0deg) rotateY(0deg)');
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
   const [entranceComplete, setEntranceComplete] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const animationRef = useRef(null);
   const targetRef = useRef({ rotateX: 0, rotateY: 0, scale: 1 });
   const currentRef = useRef({ rotateX: 0, rotateY: 0, scale: 1 });
+
+  // Detect touch device on mount
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
 
   // Mark entrance animation as complete after delay
   const staggerDelay = 0.3 + (index * 0.07);
@@ -159,6 +165,7 @@ const ProjectCard = ({ project, index }) => {
   };
 
   const handleMouseEnter = () => {
+    if (isTouchDevice) return;
     targetRef.current.scale = 1.02;
     if (!animationRef.current) {
       animationRef.current = requestAnimationFrame(animate);
@@ -166,7 +173,7 @@ const ProjectCard = ({ project, index }) => {
   };
 
   const handleMouseMove = (e) => {
-    if (!cardRef.current) return;
+    if (isTouchDevice || !cardRef.current) return;
     
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -185,6 +192,7 @@ const ProjectCard = ({ project, index }) => {
   };
 
   const handleMouseLeave = () => {
+    if (isTouchDevice) return;
     targetRef.current = { rotateX: 0, rotateY: 0, scale: 1 };
     setGlare({ x: 50, y: 50, opacity: 0 });
     
@@ -212,16 +220,16 @@ const ProjectCard = ({ project, index }) => {
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className={`relative rounded-2xl overflow-hidden will-change-transform ${!entranceComplete ? 'animate-card' : ''}`}
+      className={`relative rounded-xl sm:rounded-2xl overflow-hidden will-change-transform ${!entranceComplete ? 'animate-card' : ''}`}
       style={{ 
-        transform: entranceComplete ? transform : undefined,
+        transform: entranceComplete && !isTouchDevice ? transform : undefined,
         transformStyle: 'preserve-3d',
         opacity: entranceComplete ? 1 : 0,
         animationDelay: !entranceComplete ? `${staggerDelay}s` : undefined
       }}
     >
       {/* Card background */}
-      <div className="relative bg-[#2a2a2a]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-6 h-full">
+      <div className="relative bg-[#2a2a2a]/90 backdrop-blur-sm border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 h-full">
         {/* Glare effect */}
         <div 
           className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300"
@@ -230,18 +238,20 @@ const ProjectCard = ({ project, index }) => {
           }}
         />
         
-        {/* GitHub link - larger hit area for easier clicking */}
-        <a
-          href={project.github}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute top-3 right-3 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200 z-20"
-          onClick={(e) => e.stopPropagation()}
-          onMouseEnter={(e) => e.stopPropagation()}
-          style={{ transform: 'translateZ(20px)' }} // Pop out slightly in 3D space
-        >
-          <Github size={18} className="text-white/70 hover:text-white transition-colors" />
-        </a>
+        {/* GitHub link - larger touch target for mobile */}
+        {project.github && (
+          <a
+            href={project.github}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute top-2 right-2 sm:top-3 sm:right-3 p-3 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors duration-200 z-20 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onMouseEnter={(e) => e.stopPropagation()}
+            style={{ transform: 'translateZ(20px)' }} // Pop out slightly in 3D space
+          >
+            <Github size={20} className="text-white/70 hover:text-white transition-colors" />
+          </a>
+        )}
 
         {/* Content */}
         <div className="relative z-10">

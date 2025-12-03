@@ -56,6 +56,7 @@ const ScrollingRow = React.memo(({ rowData, duration, delay }) => (
     <RowText data={rowData} />
   </div>
 ));
+ScrollingRow.displayName = 'ScrollingRow';
 
 const RowText = React.memo(({ data }) => (
   <div className="flex w-1/2 min-w-max justify-around whitespace-nowrap px-4 text-xl sm:text-2xl font-bold tracking-widest">
@@ -71,17 +72,23 @@ const RowText = React.memo(({ data }) => (
     ))}
   </div>
 ));
+RowText.displayName = 'RowText';
 
 export default function ScrollingBackground() {
   const [rows, setRows] = useState([]);
 
   // Generate rows once on mount - they persist across page navigations
   useEffect(() => {
-    const newRows = Array.from({ length: 40 }).map((_, i) => {
+    // Reduce number of rows on mobile for better performance
+    const isMobile = window.innerWidth < 768;
+    const rowCount = isMobile ? 25 : 40;
+    const charCount = isMobile ? 40 : 60;
+    
+    const newRows = Array.from({ length: rowCount }).map((_, i) => {
       const duration = 35 + Math.random() * 15;
       return {
         id: i,
-        data: generateRowData(60),
+        data: generateRowData(charCount),
         duration: duration,
         delay: Math.random() * duration
       };
