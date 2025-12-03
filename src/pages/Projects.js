@@ -21,7 +21,7 @@ const PROJECTS_DATA = [
     emoji: "🎓",
     description: "A mobile application to recommend internships and job listings to STEM students, using a hybrid recommender system coupled with novel AI-powered conversational refinement.",
     tags: ["LangChain", "Hybrid Recommender System", "Python", "Full-Stack"],
-    github: "https://github.com/Tazzy1907/CS139-Coursework-EventByte",
+    github: "https://github.com/Tazzy1907/third-year-project",
     color: "#06B6D4"
   },
   {
